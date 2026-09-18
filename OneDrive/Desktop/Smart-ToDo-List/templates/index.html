@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Task Manager — Smart Productivity Dashboard</title>
+    <!-- Google Fonts for typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN for Productivity Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Toast Notification Container for Flask Flash & JS Messages -->
+    <div id="toast-container" class="toast-container" aria-live="polite">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="toast toast-{{ category }} toast-show" data-delay="4000" role="alert">
+                        <div class="toast-content">
+                            <span class="toast-icon">
+                                {% if category == 'success' %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10.01-3-3"/></svg>
+                                {% elif category == 'error' %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                                {% elif category == 'warning' %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                                {% else %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></svg>
+                                {% endif %}
+                            </span>
+                            <p class="toast-msg">{{ message }}</p>
+                        </div>
+                        <button class="toast-close-btn" aria-label="Close notification">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    <!-- 1. Clean Single Topbar -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <button
+                id="menuButton"
+                class="mobile-menu-btn"
+                type="button"
+                aria-label="Open menu"
+            >
+                ☰
+            </button>
+            <h1 id="currentPageTitle">
+                Dashboard
+            </h1>
+        </div>
+
+        <div class="top-search">
+            <span class="search-icon">⌕</span>
+            <input
+                id="globalSearch"
+                type="search"
+                placeholder="Search tasks..."
+                aria-label="Search tasks"
+            >
+            <kbd class="kbd-shortcut" title="Press Ctrl+K to search">Ctrl K</kbd>
+        </div>
+
+        <div class="topbar-actions">
+            <a
+                class="btn btn-secondary btn-sm"
+                href="{{ url_for('export_report') }}?auto=1"
+                target="_blank"
+                id="btn-open-export-modal"
+                style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 0.5rem 0.85rem; text-decoration: none;"
+                title="Download Executive PDF Report"
+            >
+                <span>📄</span>
+                <span class="d-none-mobile">Download PDF</span>
+            </a>
+
+            <button
+                class="add-task-btn"
+                id="btn-open-create-task"
+                data-open-task-form
+                type="button"
+            >
+                + Add Task
+            </button>
+
+            <button
+                id="themeToggle"
+                class="top-icon-btn"
+                type="button"
+                aria-label="Change theme"
+                title="Toggle Theme"
+            >
+                ☾
+            </button>
+
+            <button
+                id="notification-bell-btn"
+                class="top-icon-btn notification-btn"
+                type="button"
+                aria-label="Notifications"
+                title="Notifications"
+            >
+                🔔
+                <span class="notification-badge" id="notification-badge">
+                    0
+                </span>
+            </button>
+
+            <div class="profile-dropdown-wrapper" style="position: relative; display: inline-block;">
+                <button
+                    class="profile-button"
+                    type="button"
+                    id="user-profile-trigger"
+                >
+                    <span class="profile-avatar" style="background-color: var(--primary); color: white; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">
+                        {{ current_user.full_name[0] | upper if current_user else 'U' }}
+                    </span>
+                    <span class="profile-info">
+                        <strong class="user-name-text">{{ current_user.full_name if current_user else 'Guest' }}</strong>
+                        <small>{{ current_user.role if current_user and current_user.role else 'User' }}</small>
+                    </span>
+                    <span>⌄</span>
+                </button>
+                <div class="profile-dropdown-menu" id="profileDropdown" style="display: none; position: absolute; right: 0; top: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); width: 230px; z-index: 1000; margin-top: 0.5rem; text-align: left; padding: 0.5rem 0;">
+                    <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text);">{{ current_user.full_name if current_user else 'Guest' }}</div>
+                        <div style="font-size: 0.78rem; color: var(--primary); font-weight: 700; font-family: monospace;">ID: {{ current_user.unique_id if current_user else '' }}</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ current_user.email if current_user else '' }}</div>
+                    </div>
+                    <a href="{{ url_for('profile_view') }}" style="display: block; padding: 0.6rem 1rem; font-size: 0.9rem; color: var(--text); text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='none'">
+                        👤 My Profile
+                    </a>
+                    <a href="javascript:void(0)" onclick="showSection('settings')" style="display: block; padding: 0.6rem 1rem; font-size: 0.9rem; color: var(--text); text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='none'">
+                        ⚙️ Settings
+                    </a>
+                    <a href="{{ url_for('export_report') }}?auto=1" target="_blank" id="dropdown-export-btn" style="display: block; padding: 0.6rem 1rem; font-size: 0.9rem; color: var(--text); text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='none'">
+                        📄 Download PDF Report
+                    </a>
+                    <a href="{{ url_for('logout') }}" style="display: block; padding: 0.6rem 1rem; font-size: 0.9rem; color: #ef4444; text-decoration: none; transition: background 0.2s; border-top: 1px solid var(--border);" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='none'">
+                        🚪 Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. Main Desktop SaaS Layout -->
+    <div class="app-layout-wrapper">
+        
+        <!-- Left Sidebar Navigation -->
+        <aside class="app-sidebar" id="sidebar">
+            <div class="sidebar-brand-group" style="padding: 0.5rem 12px 1.25rem 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 0.85rem;">
+                <span style="font-size: 1.3rem;">🚀</span>
+                <span style="font-weight: 800; font-size: 15px; color: var(--text);">AI Task Manager</span>
+            </div>
+            <nav class="sidebar-nav" role="navigation" aria-label="Primary navigation">
+                <button
+                    class="nav-item active"
+                    data-section="dashboard"
+                    data-title="Dashboard"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">▦</span>
+                    <span>Dashboard</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="tasks"
+                    data-title="Tasks"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">☷</span>
+                    <span>Tasks</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="calendar"
+                    data-title="Calendar"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">▣</span>
+                    <span>Calendar</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="kanban"
+                    data-title="Kanban Board"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">☰</span>
+                    <span>Kanban Board</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="ai"
+                    data-title="AI Assistant"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">◉</span>
+                    <span>AI Assistant</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="planner"
+                    data-title="Smart Planner"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">◇</span>
+                    <span>Smart Planner</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="focus"
+                    data-title="Focus Studio"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">⚡</span>
+                    <span>Focus Studio</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="habits"
+                    data-title="Habits"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">✓</span>
+                    <span>Habits</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="analytics"
+                    data-title="Analytics"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">⌁</span>
+                    <span>Analytics</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="achievements"
+                    data-title="Achievements"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">☆</span>
+                    <span>Achievements</span>
+                </button>
+
+                <button
+                    class="nav-item"
+                    data-section="settings"
+                    data-title="Settings"
+                    type="button"
+                >
+                    <span class="nav-icon-glyph">⚙</span>
+                    <span>Settings</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Right Main Workspace Content Area -->
+        <main class="app-workspace-content">
+
+            <!-- ============================================================
+                 SECTION 1: DASHBOARD (MAIN OVERVIEW)
+                 ============================================================ -->
+            <div id="section-dashboard" class="page-section active" role="tabpanel">
+                <div class="section-intro">
+                    <h2 style="font-size: 1.5rem; font-weight: 800; margin: 0 0 0.25rem 0; color: var(--text);">
+                        Welcome back, {{ current_user.full_name if current_user else 'User' }} 👋
+                    </h2>
+                    <p style="margin: 0; color: var(--text-muted);">Real-time productivity metrics and daily workflow overview.</p>
+                </div>
+                
+                {% if stats.total == 0 %}
+                <div class="saas-welcome-card" style="background: linear-gradient(135deg, var(--primary-light) 0%, #e0f2fe 100%); border: 1px solid var(--border); border-radius: var(--radius); padding: 2.5rem; text-align: center; margin-bottom: 2rem; box-shadow: var(--shadow-sm); grid-column: 1 / -1;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+                    <h3 style="font-size: 1.5rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #1e3a8a;">Welcome to AI Task Manager!</h3>
+                    <p style="color: #475569; max-width: 500px; margin: 0 auto 1.5rem auto; line-height: 1.5;">Let's get organized. Create your very first task to kickstart your productivity, earn XP, and unlock achievements!</p>
+                    <button class="add-task-btn" onclick="document.getElementById('btn-open-create-task').click()" style="margin: 0 auto; display: inline-flex; align-items: center; gap: 8px; float: none; font-size: 1rem; padding: 0.75rem 1.5rem;">
+                        + Create Your First Task
+                    </button>
+                </div>
+                {% endif %}
+                
+                <!-- AI Daily Action & Workload Radar Banner -->
+                <div class="dash-ai-banner-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <!-- AI Daily Briefing Banner -->
+                    <div class="card ai-briefing-quick-card" style="padding: 1.25rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%); border: 1px solid rgba(99, 102, 241, 0.25); display: flex; flex-direction: column; justify-content: space-between; border-radius: var(--radius);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <span style="font-size: 1.5rem;">🌅</span>
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text);">AI Daily Briefing & Standup</h3>
+                                    <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">Personalized daily priorities & habit insights</p>
+                                </div>
+                            </div>
+                            <span class="badge badge-primary" style="font-size: 0.7rem;">Gemini AI</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button type="button" class="btn btn-primary btn-sm" id="btn-open-briefing" style="flex: 1;">
+                                <span>✨ Morning Briefing</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-open-standup" title="Evening Standup Recap">
+                                <span>🌙 Standup</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Smart Task Estimation & Burnout Radar -->
+                    <div class="card ai-burnout-quick-card" id="dash-burnout-radar-card" style="padding: 1.25rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(16, 185, 129, 0.25); display: flex; flex-direction: column; justify-content: space-between; border-radius: var(--radius);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <span style="font-size: 1.5rem;" id="dash-burnout-icon">⚡</span>
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text);">Workload & Burnout Radar</h3>
+                                    <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);" id="dash-burnout-subtitle">Cognitive capacity & schedule health</p>
+                                </div>
+                            </div>
+                            <span class="badge prio-low" id="dash-burnout-badge" style="font-size: 0.72rem;">Optimal 🟢</span>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 0.35rem; color: var(--text-muted);">
+                                <span>Scheduled Focus: <strong id="dash-burnout-hours" style="color: var(--text);">0.0h</strong> / 8.0h</span>
+                                <span id="dash-burnout-ratio">0% Load</span>
+                            </div>
+                            <div class="progress-bar-track" style="height: 6px; margin-bottom: 0.75rem;">
+                                <div id="dash-burnout-bar" class="progress-bar-fill" style="width: 0%; background: var(--success);"></div>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-open-workload-audit" style="width: 100%;">
+                                <span>📊 Audit Workload & Rebalance</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5 Executive Statistics Cards -->
+                <div class="saas-stats-row">
+                    <!-- 1. Total Tasks (Blue) -->
+                    <div class="saas-stat-card">
+                        <div class="saas-stat-top">
+                            <div class="saas-stat-icon-wrap stat-icon-blue">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="stat-svg">
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="saas-stat-body">
+                            <span class="saas-stat-label">TOTAL TASKS</span>
+                            <span class="saas-stat-number" id="dash-stat-total">{{ stats.total }}</span>
+                            <span class="saas-stat-trend text-blue">↑ All active & archived</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Completed (Green) -->
+                    <div class="saas-stat-card">
+                        <div class="saas-stat-top">
+                            <div class="saas-stat-icon-wrap stat-icon-green">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="stat-svg">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="saas-stat-body">
+                            <span class="saas-stat-label">COMPLETED</span>
+                            <span class="saas-stat-number" id="dash-stat-completed">{{ stats.completed }}</span>
+                            <span class="saas-stat-trend text-green">✓ Finished successfully</span>
+                        </div>
+                    </div>
+
+                    <!-- 3. In Progress (Orange) -->
+                    <div class="saas-stat-card">
+                        <div class="saas-stat-top">
+                            <div class="saas-stat-icon-wrap stat-icon-orange">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="stat-svg">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="saas-stat-body">
+                            <span class="saas-stat-label">IN PROGRESS</span>
+                            <span class="saas-stat-number" id="dash-stat-inprogress">{{ stats.in_progress }}</span>
+                            <span class="saas-stat-trend text-orange">⚡ Currently active</span>
+                        </div>
+                    </div>
+
+                    <!-- 4. Overdue (Red) -->
+                    <div class="saas-stat-card">
+                        <div class="saas-stat-top">
+                            <div class="saas-stat-icon-wrap stat-icon-red">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="stat-svg">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="saas-stat-body">
+                            <span class="saas-stat-label">OVERDUE</span>
+                            <span class="saas-stat-number" id="dash-stat-overdue">{{ stats.overdue }}</span>
+                            <span class="saas-stat-trend text-red">⚠ Needs prompt attention</span>
+                        </div>
+                    </div>
+
+                    <!-- 5. Productivity (Purple) -->
+                    <div class="saas-stat-card">
+                        <div class="saas-stat-top">
+                            <div class="saas-stat-icon-wrap stat-icon-purple">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="stat-svg">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="saas-stat-body">
+                            <span class="saas-stat-label">PRODUCTIVITY</span>
+                            <span class="saas-stat-number" id="dash-stat-productivity">{{ productivity }}%</span>
+                            <span class="saas-stat-trend text-purple">⭐ Overall completion rate</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Two-Column Layout (Left: Today's Plan, Right: AI Suggestions) -->
+                <div class="saas-two-column-grid">
+                    
+                    <!-- Left Panel: Today's Plan -->
+                    <div class="saas-panel-card">
+                        <div class="saas-panel-header">
+                            <div>
+                                <h3 class="saas-panel-title">Today's Plan</h3>
+                                <p class="saas-panel-subtitle">Your tasks scheduled for today</p>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-xs" id="dash-view-calendar-btn">
+                                View Calendar
+                            </button>
+                        </div>
+                        
+                        <div class="today-tasks-container" id="dash-today-tasks-container">
+                            <div class="today-task-rows-list" id="dash-today-task-rows">
+                                <!-- Populated dynamically by script.js from real SQLite tasks -->
+                                <div class="empty-mini-state">
+                                    <p class="muted-text">Loading today's tasks...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: AI Suggestions -->
+                    <div class="saas-panel-card">
+                        <div class="saas-panel-header">
+                            <div>
+                                <h3 class="saas-panel-title">AI Suggestions</h3>
+                                <p class="saas-panel-subtitle">Personalized suggestions for you</p>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-xs" id="dash-ask-ai-btn">
+                                🤖 Ask AI
+                            </button>
+                        </div>
+
+                        <div class="ai-suggestions-stack" id="dash-ai-suggestions-stack">
+                            <!-- Populated dynamically by script.js -->
+                            <div class="ai-suggestion-item warning-tint">
+                                <div class="ai-suggestion-icon">⚠️</div>
+                                <div class="ai-suggestion-text">
+                                    <strong>Priority Focus:</strong> You have high-priority tasks in your pipeline. Consider completing them first.
+                                </div>
+                            </div>
+                            <div class="ai-suggestion-item info-tint">
+                                <div class="ai-suggestion-icon">💡</div>
+                                <div class="ai-suggestion-text">
+                                    <strong>Peak Productivity:</strong> Your focus peak is highest in the morning. Use Focus Studio for deep work.
+                                </div>
+                            </div>
+                            <div class="ai-suggestion-item success-tint">
+                                <div class="ai-suggestion-icon">🌿</div>
+                                <div class="ai-suggestion-text">
+                                    <strong>Habit Streak:</strong> Check off daily routine habits to maintain streak momentum and earn extra XP.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="saas-panel-footer">
+                            <button type="button" class="btn btn-secondary btn-xs" id="dash-view-insights-btn" style="width: 100%;">
+                                View All Insights & Recommendations
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lower Dashboard Grid: Task Progress & Upcoming Deadlines -->
+                <div class="saas-lower-grid">
+                    
+                    <!-- Task Progress Card -->
+                    <div class="saas-panel-card">
+                        <div class="saas-panel-header">
+                            <div>
+                                <h3 class="saas-panel-title">Task Progress</h3>
+                                <p class="saas-panel-subtitle">Overall completion overview</p>
+                            </div>
+                            <span class="progress-percent-badge" id="progress-percentage-label">{{ productivity }}% Complete</span>
+                        </div>
+                        <div class="progress-bar-track" style="margin: 1rem 0;">
+                            <div id="progress-bar-fill" class="progress-bar-fill" data-progress="{{ productivity }}" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-stats-pills">
+                            <div class="p-stat-item">
+                                <span class="p-stat-dot dot-completed"></span>
+                                <span>Completed: <strong id="stat-completed-val">{{ stats.completed }}</strong></span>
+                            </div>
+                            <div class="p-stat-item">
+                                <span class="p-stat-dot dot-inprogress"></span>
+                                <span>In Progress: <strong id="stat-inprogress-val">{{ stats.in_progress }}</strong></span>
+                            </div>
+                            <div class="p-stat-item">
+                                <span class="p-stat-dot dot-todo"></span>
+                                <span>To Do: <strong id="stat-todo-val">{{ stats.to_do }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Deadlines Card -->
+                    <div class="saas-panel-card">
+                        <div class="saas-panel-header">
+                            <div>
+                                <h3 class="saas-panel-title">Upcoming Deadlines</h3>
+                                <p class="saas-panel-subtitle">Tasks due soon</p>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-xs" id="dash-view-all-tasks-btn">
+                                View All Tasks
+                            </button>
+                        </div>
+                        <div class="upcoming-deadlines-list" id="dash-upcoming-deadlines-list">
+                            <!-- Populated dynamically -->
+                            <p class="muted-text" style="font-size: 0.84rem; padding: 0.5rem 0;">Loading upcoming tasks...</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 2: TASKS LIST VIEW
+                 ============================================================ -->
+            <div id="section-tasks" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Organize, filter, and track all your scheduled tasks and priorities.</p>
+                </div>
+                
+                <!-- Controls, Search, Sort & Filters Bar -->
+                <div class="card controls-card">
+                    <div class="controls-wrapper">
+                        <div class="sort-wrapper">
+                            <label for="sort-select">Sort:</label>
+                            <select id="sort-select" class="sort-select" aria-label="Sort configuration">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="priority">High Priority</option>
+                                <option value="due_date">Due Date</option>
+                                <option value="progress">Progress %</option>
+                                <option value="alphabetical">Alphabetical</option>
+                            </select>
+                        </div>
+
+                        <div class="filters-wrapper" role="group" aria-label="Status filter buttons">
+                            <button type="button" class="filter-btn active" data-filter="all">All</button>
+                            <button type="button" class="filter-btn" data-filter="active">Active</button>
+                            <button type="button" class="filter-btn" data-filter="to_do">To Do</button>
+                            <button type="button" class="filter-btn" data-filter="in_progress">In Progress</button>
+                            <button type="button" class="filter-btn" data-filter="completed">Completed</button>
+                            <button type="button" class="filter-btn" data-filter="overdue">Overdue</button>
+                        </div>
+
+                        <div class="export-quick-wrapper" style="margin-left: auto;">
+                            <a href="{{ url_for('export_report') }}?auto=1" target="_blank" class="btn btn-secondary btn-sm" id="task-filter-export-btn" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" title="Download Official PDF Report">
+                                <span>📄 Download PDF</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Smart Task Creator (Natural Language & Voice Task Creation) -->
+                <div class="card ai-smart-creator-card" style="margin-bottom: 1.25rem;">
+                    <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span>✨</span>
+                            <h3 style="margin: 0; font-size: 0.95rem;">AI Natural Language & Voice Task Creator</h3>
+                        </div>
+                        <span class="badge badge-primary" style="font-size: 0.7rem;">Voice Enabled 🎙️</span>
+                    </div>
+                    <div style="padding: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <input type="text" id="ai-natural-prompt" placeholder="e.g. Finish machine learning project tomorrow with high priority and 90 mins" style="flex: 1; min-width: 250px;">
+                        <button type="button" id="ai-voice-dictate-btn" class="btn btn-secondary" title="Click to speak task" style="display: inline-flex; align-items: center; gap: 6px;">
+                            <span>🎤 Voice</span>
+                        </button>
+                        <button type="button" id="ai-parse-task-btn" class="btn btn-primary btn-ai">
+                            <span>✨ Parse & Populate</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Task List Card -->
+                <div class="card task-list-card">
+                    <div class="task-list-header">
+                        <span style="font-weight: 700; font-size: 15px; color: var(--text);">Task Pipeline</span>
+                        <span class="task-count-badge" id="task-count-badge">Showing 0 of 0 tasks</span>
+                    </div>
+                    
+                    <div id="tasks-container" class="tasks-container">
+                        <div class="task-items-list" id="task-items-list">
+                            {% if tasks %}
+                                {% for task in tasks %}
+                                    <div class="task-card {{ task.priority }}-priority {% if task.status == 'completed' %}task-completed{% endif %}" 
+                                         draggable="true"
+                                         data-id="{{ task.id }}"
+                                         data-title="{{ task.title | lower }}"
+                                         data-description="{{ task.description | lower }}"
+                                         data-priority="{{ task.priority }}"
+                                         data-category="{{ task.category }}"
+                                         data-due-date="{{ task.due_date }}"
+                                         data-status="{{ task.status }}"
+                                         data-created-at="{{ task.created_at }}"
+                                         data-board-status="{{ task.status }}"
+                                         data-est-time="{{ task.estimated_time or 0 }}"
+                                         data-progress="{{ task.progress or 0 }}"
+                                         data-started-at="{{ task.started_at or 'Not started' }}"
+                                         data-completed-at="{{ task.completed_at or '—' }}"
+                                         data-updated-at="{{ task.updated_at or '—' }}"
+                                         data-ai-priority="{{ task.ai_priority or '' }}"
+                                         data-ai-reason="{{ task.ai_reason or '' }}">
+                                        
+                                        <!-- Checkbox -->
+                                        <div class="task-card-left">
+                                            <button class="task-toggle-ajax-btn" data-id="{{ task.id }}" aria-label="Toggle completed status">
+                                                <div class="custom-checkbox">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="check-icon" aria-hidden="true">
+                                                        <polyline points="20 6 9 17 4 12"/>
+                                                    </svg>
+                                                </div>
+                                            </button>
+                                        </div>
+
+                                        <div class="task-card-content">
+                                            <div class="task-card-meta">
+                                                <!-- Category Badge -->
+                                                <span class="category-badge cat-{{ task.category }}">
+                                                    {% if task.category == 'study' %}📚 Study
+                                                    {% elif task.category == 'work' %}💼 Work
+                                                    {% elif task.category == 'personal' %}🏠 Personal
+                                                    {% else %}🧩 Other
+                                                    {% endif %}
+                                                </span>
+                                                <!-- Priority Badge -->
+                                                <span class="priority-badge prio-{{ task.priority }}">
+                                                    {{ task.priority | capitalize }}
+                                                </span>
+                                                
+                                                <!-- Status Badge -->
+                                                <span class="status-badge status-{{ task.status }}">
+                                                    {% if task.status == 'to_do' %}⚪ To Do
+                                                    {% elif task.status == 'in_progress' %}<span class="pulse-dot"></span> In Progress
+                                                    {% else %}✓ Completed
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+
+                                            <div class="task-header-row">
+                                                <h3 class="task-title-text">{{ task.title }}</h3>
+                                            </div>
+
+                                            {% if task.description %}
+                                                <p class="task-desc-text">{{ task.description }}</p>
+                                            {% endif %}
+
+                                            <!-- Single Clean Progress Component -->
+                                            <div class="task-progress-container">
+                                                <div class="task-progress-header">
+                                                    <span class="task-progress-label">Progress:</span>
+                                                    <strong class="task-progress-percent">{{ task.progress or 0 }}%</strong>
+                                                </div>
+                                                <div class="task-slider-track-wrap">
+                                                    <input type="range" 
+                                                           class="task-progress-slider" 
+                                                           min="0" 
+                                                           max="100" 
+                                                           value="{{ task.progress or 0 }}" 
+                                                           data-id="{{ task.id }}" 
+                                                           aria-label="Adjust task progress">
+                                                </div>
+                                            </div>
+
+                                            <!-- Action Buttons & Status -->
+                                            <div class="task-actions-row">
+                                                <div class="card-action-triggers" data-id="{{ task.id }}">
+                                                    <button type="button" class="btn btn-xs btn-primary action-start-btn {% if task.status != 'to_do' %}hidden{% endif %}" data-id="{{ task.id }}" data-action="start">▶ Start</button>
+                                                    <button type="button" class="btn btn-xs btn-warning action-pause-btn {% if task.status != 'in_progress' %}hidden{% endif %}" data-id="{{ task.id }}" data-action="pause">⏸ Pause</button>
+                                                    <button type="button" class="btn btn-xs btn-success action-complete-btn {% if task.status == 'completed' %}hidden{% endif %}" data-id="{{ task.id }}" data-action="complete">✓ Complete</button>
+                                                    <button type="button" class="btn btn-xs btn-secondary action-reopen-btn {% if task.status != 'completed' %}hidden{% endif %}" data-id="{{ task.id }}" data-action="reopen">↩ Re-open</button>
+                                                </div>
+
+                                                <div class="task-details-bottom">
+                                                    {% if task.due_date %}
+                                                        <div class="due-date-meta">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="calendar-icon" aria-hidden="true">
+                                                                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                                                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                                                            </svg>
+                                                            <span class="due-date-text">{{ task.due_date }}</span>
+                                                        </div>
+                                                    {% endif %}
+                                                    {% if task.estimated_time and task.estimated_time > 0 %}
+                                                        <span class="est-time-meta">⏱️ {{ task.estimated_time }}m</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+
+                                            <!-- AI Quick Action Buttons -->
+                                            <div class="card-ai-triggers">
+                                                <button type="button" class="btn btn-xs btn-ai card-ai-breakdown-btn" data-id="{{ task.id }}">&#129302; Breakdown</button>
+                                                <button type="button" class="btn btn-xs btn-ai card-ai-priority-btn" data-id="{{ task.id }}">&#128308; Smart Priority</button>
+                                                <button type="button" class="btn btn-xs btn-ai card-ai-estimate-btn" data-id="{{ task.id }}">&#9201; Suggest Time</button>
+                                            </div>
+
+                                            <!-- Saved AI Details Badge -->
+                                            <div class="card-ai-badge-row {% if not task.ai_priority %}hidden{% endif %}" id="ai-badges-{{ task.id }}" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--primary-light); border-radius: var(--radius-sm); border-left: 3px solid var(--primary);">
+                                                <div style="font-size: 0.78rem; font-weight: 700; color: var(--primary);">&#128161; Suggested Priority: <span id="ai-badge-val-{{ task.id }}">{{ (task.ai_priority or 'Medium') | capitalize }}</span></div>
+                                                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem;"><em>Reason: <span id="ai-badge-reason-{{ task.id }}">{{ task.ai_reason or '' }}</span></em></div>
+                                            </div>
+
+                                            <!-- Dynamic Subtask Breakdown Box -->
+                                            <div class="card-ai-breakdown-box hidden" id="ai-breakdown-box-{{ task.id }}" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--surface-sub); border-radius: var(--radius-sm); border: 1px dashed var(--border);"></div>
+                                        </div>
+
+                                        <!-- Edit / Delete Card Actions -->
+                                        <div class="task-card-actions">
+                                            <button class="action-btn edit-ajax-btn" data-id="{{ task.id }}" title="Edit Task" aria-label="Edit task details">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                            </button>
+                                            <button class="action-btn delete-ajax-btn" data-id="{{ task.id }}" title="Delete Task" aria-label="Delete task from database">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Empty State -->
+                        <div class="empty-state {% if tasks %}hidden{% endif %}" id="empty-state-container">
+                            <div class="empty-illustration">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-svg">
+                                    <path d="M9 13.7 11 15.7 15 11.7"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M3 9h18"/>
+                                </svg>
+                            </div>
+                            <h3 class="empty-title" id="empty-title-lbl">No tasks found</h3>
+                            <p class="empty-description" id="empty-desc-lbl">Click "+ Add Task" above or create tasks to populate your list.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 3: KANBAN BOARD VIEW
+                 ============================================================ -->
+            <div id="section-kanban" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Visual pipeline board for tracking task statuses across stages.</p>
+                </div>
+                <div class="card" style="padding: 1.25rem;">
+                    <div class="kanban-board">
+                        <div class="kanban-column" data-status="To Do">
+                            <div class="kanban-header">
+                                <h3>📋 To Do</h3>
+                                <span class="badge" id="todoCount">0</span>
+                            </div>
+                            <div class="kanban-list" id="todoList"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="In Progress">
+                            <div class="kanban-header">
+                                <h3>🚀 In Progress</h3>
+                                <span class="badge badge-primary" id="progressCount">0</span>
+                            </div>
+                            <div class="kanban-list" id="progressList"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="Completed">
+                            <div class="kanban-header">
+                                <h3>✅ Completed</h3>
+                                <span class="badge badge-success" id="doneCount">0</span>
+                            </div>
+                            <div class="kanban-list" id="doneList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 4: CALENDAR VIEW
+                 ============================================================ -->
+            <div id="section-calendar" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Interactive monthly and timeline calendar for deadlines and schedules.</p>
+                </div>
+                <div class="card">
+                    <!-- Calendar Sub-Tabs & Navigation -->
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; border-bottom: 1px solid var(--border); padding: 1rem 1.25rem;">
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="btn btn-secondary btn-xs active" id="btn-sub-calendar">📅 Calendar View</button>
+                            <button type="button" class="btn btn-secondary btn-xs" id="btn-sub-timeline">⏳ Timeline View</button>
+                        </div>
+                    </div>
+
+                    <!-- Panel: Calendar Content -->
+                    <div id="panel-sub-calendar" style="padding: 1.25rem;">
+                        <div class="calendar-toolbar">
+                            <button type="button" id="calendarPrev" class="btn btn-secondary btn-xs">‹ Prev</button>
+                            <h2 id="calendarMonthLabel">August 2026</h2>
+                            <button type="button" id="calendarNext" class="btn btn-secondary btn-xs">Next ›</button>
+                        </div>
+
+                        <div class="calendar-weekdays">
+                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                        </div>
+
+                        <div class="calendar-grid" id="calendarGrid">
+                            <!-- Populated dynamically in JS -->
+                        </div>
+                        
+                        <div class="calendar-task-list" id="calendar-selected-tasks" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                            <h4 class="selected-date-title">Select a date to view scheduled tasks</h4>
+                            <div class="calendar-tasks-container" id="calendar-tasks-container" style="margin-top: 0.5rem;">
+                                <p class="muted-text">Click any date on the calendar grid.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel: Timeline Content -->
+                    <div id="panel-sub-timeline" class="hidden" style="padding: 1.25rem;">
+                        <div class="timeline-view-container" id="timeline-view-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 5: ANALYTICS VIEW
+                 ============================================================ -->
+            <div id="section-analytics" class="page-section" role="tabpanel">
+                <div class="section-intro" style="margin-bottom: 1.25rem;">
+                    <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0 0 0.25rem 0; color: var(--text);">
+                        📊 Productivity Analytics & Insights
+                    </h2>
+                    <p style="margin: 0; color: var(--text-muted);">Real-time performance metrics, completion velocity, and AI recommendations.</p>
+                </div>
+
+                <!-- AI Productivity Score Banner -->
+                <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, var(--surface) 0%, var(--surface-sub) 100%); border-left: 4px solid var(--primary);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 1.25rem;">
+                            <div style="position: relative; width: 72px; height: 72px; display: flex; align-items: center; justify-content: center;">
+                                <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                                    <path stroke="var(--border)" stroke-width="3.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path id="score-ring-path" stroke="var(--primary)" stroke-width="3.5" stroke-dasharray="0, 100" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" style="transition: stroke-dasharray 0.8s ease;" />
+                                </svg>
+                                <span id="score-numeric-text" style="position: absolute; font-weight: 800; font-size: 0.95rem; color: var(--text);">0</span>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">AI Productivity Coach</span>
+                                <h3 style="margin: 0.2rem 0; font-size: 1.15rem; color: var(--text);">Performance Evaluation</h3>
+                                <p id="score-explanation-paragraph" style="margin: 0; font-size: 0.88rem; color: var(--text-muted); max-width: 650px; line-height: 1.4;">
+                                    Analyzing your task data and productivity consistency...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6 Metric Cards -->
+                <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Total Tasks</span>
+                            <span class="stat-value text-blue" id="analytics-total-tasks">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Active Tasks</span>
+                            <span class="stat-value" id="analytics-active-tasks">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">In Progress</span>
+                            <span class="stat-value text-warning" id="analytics-in-progress">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Completed</span>
+                            <span class="stat-value text-success" id="analytics-completed-tasks">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Overdue</span>
+                            <span class="stat-value text-danger" id="analytics-overdue-tasks">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Completion Rate</span>
+                            <span class="stat-value text-primary" id="analytics-completion-rate">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1: Weekly Trend & Category -->
+                <div class="saas-two-column-grid" style="margin-bottom: 1.5rem;">
+                    <div class="card" style="padding: 1.25rem;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0; font-size: 1.05rem;">📈 Weekly Productivity Velocity</h3>
+                            <small style="color: var(--text-muted);">Last 7 Days</small>
+                        </div>
+                        <div class="canvas-wrapper">
+                            <canvas id="chart-weekly-trend"></canvas>
+                        </div>
+                    </div>
+                    <div class="card" style="padding: 1.25rem;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0; font-size: 1.05rem;">🧩 Category Distribution</h3>
+                            <small style="color: var(--text-muted);">By Category</small>
+                        </div>
+                        <div class="canvas-wrapper">
+                            <canvas id="chart-category"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2: Priority Stacked Bar & Smart Insights / Comparison -->
+                <div class="saas-two-column-grid" style="margin-bottom: 1.5rem;">
+                    <div class="card" style="padding: 1.25rem;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0; font-size: 1.05rem;">⚡ Priority Distribution</h3>
+                            <small style="color: var(--text-muted);">High / Med / Low</small>
+                        </div>
+                        <div class="canvas-wrapper">
+                            <canvas id="chart-priority"></canvas>
+                        </div>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column;">
+                        <div class="card-header" style="margin-bottom: 0.85rem;">
+                            <h3 style="margin: 0; font-size: 1.05rem;">💡 Smart Recommendations</h3>
+                        </div>
+                        <ul id="analytics-insights-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.88rem; color: var(--text); display: flex; flex-direction: column; gap: 0.6rem; flex: 1;">
+                            <li style="color: var(--text-muted);">Loading actionable suggestions...</li>
+                        </ul>
+                        
+                        <!-- Monthly Comparison Box -->
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                            <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text);">📅 Monthly Comparison</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.8rem;">
+                                <div style="background: var(--surface-sub); padding: 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                                    <div style="font-weight: 700;" id="prev-month-header">Last Month</div>
+                                    <div style="color: var(--text-muted);">Completed: <span id="prev-month-completed" style="font-weight: 700; color: var(--text);">0</span></div>
+                                    <div style="color: var(--text-muted);">Rate: <span id="prev-month-rate" style="font-weight: 700; color: var(--text);">0%</span></div>
+                                </div>
+                                <div style="background: var(--surface-sub); padding: 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                                    <div style="font-weight: 700; color: var(--primary);" id="curr-month-header">This Month</div>
+                                    <div style="color: var(--text-muted);">Completed: <span id="curr-month-completed" style="font-weight: 700; color: var(--text);">0</span></div>
+                                    <div style="color: var(--text-muted);">Rate: <span id="curr-month-rate" style="font-weight: 700; color: var(--primary);">0%</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 30-Day Activity Heatmap -->
+                <div class="card" style="padding: 1.25rem;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0; font-size: 1.05rem;">🔥 30-Day Completion Heatmap</h3>
+                        <small style="color: var(--text-muted);">Daily Productivity Streak</small>
+                    </div>
+                    <div id="analytics-heatmap-container" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0.5rem 0;">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 6: AI DAILY SMART PLANNER
+                 ============================================================ -->
+            <div id="section-planner" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Automated daily schedule optimizer generated from your real database tasks.</p>
+                </div>
+                <div class="card" style="padding: 1.5rem;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <span style="font-weight: 700; font-size: 15px; color: var(--text);">Daily Schedule Timeline</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="btn btn-primary" id="generate-daily-plan-btn">✨ Generate Today's Plan</button>
+                            <button type="button" class="btn btn-secondary hidden" id="refresh-daily-plan-btn">🔄 Refresh</button>
+                            <button type="button" class="btn btn-success hidden" id="accept-daily-plan-btn">✅ Accept Plan</button>
+                        </div>
+                    </div>
+
+                    <div class="daily-plan-body" id="daily-plan-body-container" style="padding: 0.5rem 0;">
+                        {% if saved_plan %}
+                            <div class="planner-timeline">
+                                {% for item in saved_plan %}
+                                    <div class="planner-timeline-item" data-task-id="{{ item.task_id }}">
+                                        <div class="planner-time">{{ item.start_time }} – {{ item.end_time }}</div>
+                                        <div class="planner-card">
+                                            <div class="planner-task-header">
+                                                <h4>{{ item.task_title }}</h4>
+                                                <span class="badge prio-{{ item.priority }}">{{ item.priority | capitalize }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="muted-text">Click "Generate Today's Plan" to build a dynamically prioritized timeline using active tasks.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 7: AI ASSISTANT & CHAT
+                 ============================================================ -->
+            <div id="section-ai" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Ask AI for productivity recommendations or generate structured goal breakdown plans.</p>
+                </div>
+                <div class="saas-two-column-grid">
+                    <!-- AI Chat Assistant -->
+                    <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column; height: 500px;">
+                        <div class="card-header" style="padding: 0 0 0.75rem 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                            <h3 style="margin: 0; font-size: 1.05rem;">💬 AI Productivity Assistant</h3>
+                        </div>
+                        <div class="chat-messages-box" id="ai-chat-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; background: var(--surface-sub); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                            <div class="chat-msg ai-msg" style="background: var(--surface); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; border: 1px solid var(--border);">
+                                <p style="margin: 0;">Hello! I am your AI Productivity Assistant. Ask me anything about your tasks, or ask for recommendations!</p>
+                            </div>
+                        </div>
+                        <form id="ai-chat-form" style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                            <input type="text" id="ai-chat-input" placeholder="Ask AI assistant..." required style="flex: 1;">
+                            <button type="submit" class="btn btn-primary">Send</button>
+                        </form>
+                    </div>
+
+                    <!-- AI Plan Generator -->
+                    <div class="card" style="padding: 1.25rem;">
+                        <div class="card-header" style="padding: 0 0 0.75rem 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                            <h3 style="margin: 0; font-size: 1.05rem;">✨ Goal Plan Generator</h3>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <label for="ai-accomplish-input" style="font-size: 0.82rem; font-weight: 600;">What goal do you want to accomplish?</label>
+                            <input type="text" id="ai-accomplish-input" placeholder="e.g. Master Python Flask in 3 weeks">
+                            <button type="button" id="ai-generate-plan-btn" class="btn btn-primary btn-ai">✨ Generate Plan</button>
+                            <div class="ai-suggestions-box hidden" id="ai-plan-suggestions-holder" style="margin-top: 0.75rem;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 8: AI WEEKLY PLANNER
+                 ============================================================ -->
+            <div id="section-weeklyPlan" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>7-day workload distribution for balanced week-long productivity.</p>
+                </div>
+                <div class="card" style="padding: 1.5rem;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                        <span style="font-weight: 700; font-size: 15px; color: var(--text);">Weekly Workload Schedule</span>
+                        <button type="button" class="btn btn-primary" id="generate-weekly-plan-btn">✨ Generate Weekly Schedule</button>
+                    </div>
+                    <div class="weekly-plan-body" id="weekly-plan-body-container" style="padding: 0.5rem 0;">
+                        <p class="muted-text">Click "Generate Weekly Schedule" to distribute your workload across the next 7 days.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 9: HABIT & STREAK TRACKER
+                 ============================================================ -->
+            <div id="section-habits" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Build daily consistency, monitor routine streaks, and earn extra XP.</p>
+                </div>
+                <div class="saas-two-column-grid">
+                    <!-- Habits List -->
+                    <div class="card" style="padding: 1.25rem;">
+                        <div class="card-header" style="padding: 0 0 0.75rem 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                            <h3 style="margin: 0; font-size: 1.05rem;">📋 Daily Routine Habits</h3>
+                        </div>
+                        <div id="habits-list-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <p class="muted-text">Loading habits...</p>
+                        </div>
+                    </div>
+
+                    <!-- Add Habit Form & Streaks -->
+                    <div class="card" style="padding: 1.25rem;">
+                        <div class="card-header" style="padding: 0 0 0.75rem 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                            <h3 style="margin: 0; font-size: 1.05rem;">➕ New Routine Habit</h3>
+                        </div>
+                        <form id="create-habit-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div class="form-group" style="margin: 0;">
+                                <label>Habit Name</label>
+                                <input type="text" id="habit-name-input" placeholder="e.g. Exercise 30 Mins" required>
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label>Category</label>
+                                <select id="habit-category-select">
+                                    <option value="health">🏃‍♂️ Health / Fitness</option>
+                                    <option value="study">📚 Study / Coding</option>
+                                    <option value="work">💼 Work</option>
+                                    <option value="general">🧩 General</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">✨ Add Habit</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 10: FOCUS STUDIO
+                 ============================================================ -->
+            <div id="section-focus" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Stay focused with customizable deep-work sessions.</p>
+                </div>
+                
+                <div class="focus-studio-grid">
+                    <!-- Left Column: Focus Session Controls & Timer -->
+                    <div class="card focus-card">
+                        <div class="focus-card-header">
+                            <h3 class="focus-card-title">⚡ Focus Session</h3>
+                            <span class="focus-status-badge" id="focus-status-badge">Ready</span>
+                        </div>
+
+                        <!-- Select Task Dropdown -->
+                        <div class="focus-form-group">
+                            <label for="focus-task-select" class="focus-label">Select Target Task</label>
+                            <select id="focus-task-select" class="focus-select" aria-label="Select task for focus session">
+                                <option value="">-- No specific task (General Focus) --</option>
+                                {% for task in tasks %}
+                                    {% if task.status != 'completed' %}
+                                        <option value="{{ task.id }}" data-title="{{ task.title }}" data-priority="{{ task.priority }}" data-progress="{{ task.progress or 0 }}">
+                                            {{ task.title }} ({{ task.priority | capitalize }})
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Timer Display -->
+                        <div class="focus-timer-container">
+                            <div class="focus-timer-circle">
+                                <svg class="focus-timer-svg" viewBox="0 0 100 100">
+                                    <circle class="focus-timer-bg" cx="50" cy="50" r="45"></circle>
+                                    <circle id="focus-ring-fill" class="focus-timer-progress" cx="50" cy="50" r="45" stroke-dasharray="283" stroke-dashoffset="0"></circle>
+                                </svg>
+                                <div class="focus-timer-inner">
+                                    <span class="focus-time-display" id="focus-time-left">20:00</span>
+                                    <span class="focus-mode-label" id="focus-mode-label">Deep Work</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Duration Selector (20m, 30m, 45m, 60m) -->
+                        <div class="focus-duration-group" role="group" aria-label="Focus session duration">
+                            <button type="button" class="btn btn-secondary focus-duration-btn active" data-duration="20">20m</button>
+                            <button type="button" class="btn btn-secondary focus-duration-btn" data-duration="30">30m</button>
+                            <button type="button" class="btn btn-secondary focus-duration-btn" data-duration="45">45m</button>
+                            <button type="button" class="btn btn-secondary focus-duration-btn" data-duration="60">60m</button>
+                        </div>
+
+                        <!-- Primary Action Controls (Start, Pause, Resume, Reset) -->
+                        <div class="focus-actions-group">
+                            <button type="button" id="btn-focus-start" class="btn btn-primary focus-btn">
+                                <span>▶ Start</span>
+                            </button>
+                            <button type="button" id="btn-focus-pause" class="btn btn-warning focus-btn hidden">
+                                <span>⏸ Pause</span>
+                            </button>
+                            <button type="button" id="btn-focus-resume" class="btn btn-primary focus-btn hidden">
+                                <span>▶ Resume</span>
+                            </button>
+                            <button type="button" id="btn-focus-reset" class="btn btn-secondary focus-btn">
+                                <span>↺ Reset</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Session Information & Ambient Sound -->
+                    <div class="card focus-card">
+                        <div class="focus-card-header">
+                            <h3 class="focus-card-title">📊 Session Information</h3>
+                            <span class="badge badge-primary" id="focus-streak-pill">🔥 0 Day Streak</span>
+                        </div>
+
+                        <!-- Focus Metrics Summary -->
+                        <div class="focus-stats-grid">
+                            <div class="focus-stat-box">
+                                <span class="focus-stat-label">Sessions Today</span>
+                                <span class="focus-stat-value" id="focus-sessions-today">0</span>
+                            </div>
+                            <div class="focus-stat-box">
+                                <span class="focus-stat-label">Total Focus Time</span>
+                                <span class="focus-stat-value" id="focus-total-time">0m</span>
+                            </div>
+                        </div>
+
+                        <!-- Current Task Info Display -->
+                        <div class="focus-current-task-box" id="focus-current-task-box">
+                            <div class="focus-task-info-header">
+                                <span class="focus-task-info-label">Current Task</span>
+                                <span class="badge badge-secondary" id="focus-current-task-priority">—</span>
+                            </div>
+                            <h4 class="focus-task-info-title" id="focus-current-task-title">No task selected</h4>
+                            <div class="focus-task-progress-wrap" id="focus-task-progress-wrap" style="display: none;">
+                                <div class="focus-task-progress-bar">
+                                    <div class="focus-task-progress-fill" id="focus-task-progress-fill" style="width: 0%;"></div>
+                                </div>
+                                <span class="focus-task-progress-text" id="focus-task-progress-text">0% complete</span>
+                            </div>
+                        </div>
+
+                        <!-- Ambient Sound Controls -->
+                        <div class="focus-ambient-section">
+                            <label for="ambient-sound-select" class="focus-label">Ambient Sound (Optional)</label>
+                            <div class="focus-ambient-controls">
+                                <select id="ambient-sound-select" class="focus-select">
+                                    <option value="none">Silence 🔇 (Default)</option>
+                                    <option value="whitenoise">Soft White Noise 💨</option>
+                                    <option value="rain">Gentle Rain 🌧️</option>
+                                    <option value="forest">Peaceful Forest 🌲</option>
+                                    <option value="lofi">Lo-Fi Study Beats 🎵</option>
+                                    <option value="cafe">Cozy Café ☕</option>
+                                </select>
+                                <button type="button" id="btn-ambient-play" class="btn btn-secondary focus-ambient-btn">
+                                    ▶ Play
+                                </button>
+                            </div>
+                            <small class="focus-ambient-status" id="ambient-status-text">Audio paused.</small>
+                        </div>
+
+                        <!-- Focus Coaching Tip -->
+                        <div class="focus-coaching-box" id="focus-coaching-box">
+                            <span class="focus-coaching-icon">💡</span>
+                            <p class="focus-coaching-text" id="focus-coaching-text">Select a task and start a 20-minute deep work session to build your streak.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 SECTION 11: ACHIEVEMENTS & GAMIFICATION
+                 ============================================================ -->
+            <div id="section-achievements" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Earn XP, level up, maintain streaks, and collect productivity badges.</p>
+                </div>
+                <div class="card gamification-hero-card">
+                    <div class="gamification-hero-left">
+                        <div class="level-avatar-badge" id="hero-level-icon">🌱</div>
+                        <div>
+                            <h2 id="hero-level-title" style="margin: 0; font-size: 1.35rem;">Level 1 — Starter</h2>
+                            <p class="muted-text" style="font-size: 0.82rem; margin: 0.2rem 0 0.5rem 0;">Earn XP by completing tasks and habits.</p>
+                            <div class="progress-bar-track" style="width: 240px; height: 8px;">
+                                <div id="hero-xp-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0;">🏅 Badges Gallery</h3>
+                        <span id="gallery-unlocked-count" class="badge badge-primary">0 / 10 Unlocked</span>
+                    </div>
+                    <div id="achievements-gallery-grid" class="achievements-gallery-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ============================================================
+                 SECTION 12: SETTINGS
+                 ============================================================ -->
+            <div id="section-settings" class="page-section" role="tabpanel">
+                <div class="section-intro">
+                    <p>Manage your workspace preferences, appearance theme, and notifications.</p>
+                </div>
+                <div class="panel settings-card" style="max-width: 680px;">
+                    <div class="panel-header" style="margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+                        <span style="font-weight: 700; font-size: 15px; color: var(--text);">Settings & Preferences</span>
+                    </div>
+
+                    <form id="settings-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="settings-group">
+                            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text);">Profile Preferences</h3>
+                            <div class="form-group" style="margin-bottom: 0.85rem;">
+                                <label for="settings-username" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Workspace Name</label>
+                                <input type="text" id="settings-username" value="Workspace">
+                            </div>
+                        </div>
+
+                        <div class="settings-group" style="border-top: 1px solid var(--border); padding-top: 1rem;">
+                            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text);">Theme & Appearance</h3>
+                            <div class="form-group" style="margin-bottom: 0.85rem;">
+                                <label for="settings-theme-select" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Theme</label>
+                                <select id="settings-theme-select">
+                                    <option value="light">Light Mode</option>
+                                    <option value="dark">Dark Mode</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-group" style="border-top: 1px solid var(--border); padding-top: 1rem;">
+                            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text);">Productivity Targets</h3>
+                            <div class="form-group" style="margin-bottom: 0.85rem;">
+                                <label for="settings-daily-goal" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Daily Goal Target</label>
+                                <input type="number" id="settings-daily-goal" min="1" max="20" value="5">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0.85rem;">
+                                <label for="settings-notifications-toggle" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Notifications</label>
+                                <select id="settings-notifications-toggle">
+                                    <option value="on" selected>ON (Enabled)</option>
+                                    <option value="off">OFF (Disabled)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-group" style="border-top: 1px solid var(--border); padding-top: 1rem;">
+                            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text);">Executive PDF Reports & Export</h3>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">Generate and download your official printable Executive PDF Productivity Report containing all task pipelines, KPI completion metrics, and gamification analytics.</p>
+                            
+                            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                <a href="{{ url_for('export_report') }}?auto=1" target="_blank" class="btn btn-primary btn-sm" title="Download Official PDF Report" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                                    <span>📄 Download PDF Report</span>
+                                </a>
+                                <a href="{{ url_for('export_report') }}" target="_blank" class="btn btn-secondary btn-sm" title="Preview PDF Report in Browser" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                                    <span>👁️ Preview Report</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+                            <button type="button" id="btn-save-settings" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============================================================
+         MODALS & OVERLAYS
+         ============================================================ -->
+
+    <!-- Add Task Modal -->
+    <div id="add-task-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
+        <div class="modal-content">
+            <button type="button" class="modal-close-btn" id="close-add-modal-btn" aria-label="Close modal">&times;</button>
+            <h2 id="add-modal-title" style="font-size: 1.15rem; margin-bottom: 0.3rem;">Create New Task</h2>
+            <p class="modal-subtitle">Plan and track your productivity</p>
+            
+            <form id="task-form" action="{{ url_for('add') }}" method="POST" class="task-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="task-title">Task Title <span style="color: var(--danger);">*</span></label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="task-title" name="title" placeholder="e.g. Finish Data Structures Assignment" required style="flex: 1;">
+                        <button type="button" id="voice-input-btn" class="btn btn-secondary" title="Voice Input" style="padding: 0 10px;">🎤</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                        <label for="task-desc" style="margin: 0;">Description</label>
+                        <span id="char-counter" style="font-size: 0.72rem; color: var(--text-secondary);">0 / 200</span>
+                    </div>
+                    <textarea id="task-desc" name="description" placeholder="Add extra task notes..." rows="2" maxlength="200"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col">
+                        <label for="task-est-time">Est. Time (Mins)</label>
+                        <input type="number" id="task-est-time" name="estimated_time" min="0" value="0" placeholder="Minutes">
+                    </div>
+                    <div class="form-group col">
+                        <label for="task-due-date">Due Date</label>
+                        <input type="date" id="task-due-date" name="due_date">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col">
+                        <label for="task-priority">Priority</label>
+                        <select id="task-priority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group col">
+                        <label for="task-category">Category</label>
+                        <select id="task-category" name="category">
+                            <option value="study" selected>Study</option>
+                            <option value="work">Work</option>
+                            <option value="personal">Personal</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem;">
+                    <button type="button" id="cancel-add-modal-btn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" id="add-task-btn" class="btn btn-primary">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="edit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-content">
+            <button type="button" class="modal-close-btn" id="close-edit-modal" aria-label="Close edit panel">&times;</button>
+            <h2 id="modal-title" style="font-size: 1.15rem; margin-bottom: 0.3rem;">Edit Task</h2>
+            <p class="modal-subtitle">Update task details and progress</p>
+            
+            <form id="edit-task-form" class="task-form" autocomplete="off">
+                <input type="hidden" id="edit-task-id" name="id">
+                
+                <div class="form-group">
+                    <label for="edit-title">Task Title <span style="color: var(--danger);">*</span></label>
+                    <input type="text" id="edit-title" name="title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-desc">Description</label>
+                    <textarea id="edit-desc" name="description" rows="2" maxlength="200"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col">
+                        <label for="edit-est-time">Est. Time (Mins)</label>
+                        <input type="number" id="edit-est-time" name="estimated_time" min="0">
+                    </div>
+                    <div class="form-group col">
+                        <label for="edit-due-date">Due Date</label>
+                        <input type="date" id="edit-due-date" name="due_date">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col">
+                        <label for="edit-priority">Priority</label>
+                        <select id="edit-priority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group col">
+                        <label for="edit-category">Category</label>
+                        <select id="edit-category" name="category">
+                            <option value="work">Work</option>
+                            <option value="personal">Personal</option>
+                            <option value="study">Study</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col">
+                        <label for="edit-status">Status</label>
+                        <select id="edit-status" name="status">
+                            <option value="to_do">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group col">
+                        <label for="edit-progress">Progress (<span id="edit-progress-text">0</span>%)</label>
+                        <input type="range" id="edit-progress" name="progress" min="0" max="100" value="0">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem;">
+                    <button type="button" id="cancel-edit-btn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" id="save-task-btn" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Center Drawer & Overlay -->
+    <div id="notification-backdrop" class="notification-backdrop hidden"></div>
+    <div id="notification-drawer" class="notification-drawer hidden" role="dialog" aria-modal="true" aria-label="Notifications Center">
+        <div class="notification-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.15rem 1.25rem; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.15rem;">🔔</span>
+                <h3 style="margin: 0; font-size: 1.05rem;">Notifications</h3>
+                <span id="drawer-unread-count-badge" class="badge badge-primary" style="font-size: 0.7rem;">0 unread</span>
+            </div>
+            <button type="button" id="close-notification-drawer-btn" class="modal-close-btn" style="position: static; font-size: 1.25rem;">&times;</button>
+        </div>
+
+        <div class="notification-tabs">
+            <button type="button" class="notif-tab-btn active" data-filter="all">All</button>
+            <button type="button" class="notif-tab-btn" data-filter="due_today">Due Today</button>
+            <button type="button" class="notif-tab-btn" data-filter="overdue">Overdue</button>
+            <button type="button" class="notif-tab-btn" data-filter="upcoming">Upcoming</button>
+            <button type="button" class="notif-tab-btn" data-filter="ai_suggestion">AI Insights</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; padding: 0.5rem 1rem; font-size: 0.75rem; border-bottom: 1px solid var(--border);">
+            <button type="button" id="refresh-notifications-btn" class="btn-link-action">🔄 Refresh</button>
+            <button type="button" id="mark-all-read-btn" class="btn-link-action">✅ Mark all read</button>
+        </div>
+
+        <div id="notifications-list" class="notification-list-container">
+            <p class="muted-text" style="text-align: center; padding: 2rem;">Loading notifications...</p>
+        </div>
+    </div>
+
+    <!-- Level-Up Celebration Modal -->
+    <div id="level-up-modal" class="modal level-up-modal hidden" role="dialog" aria-modal="true">
+        <div class="modal-content text-center">
+            <span style="font-size: 2.5rem;">👑</span>
+            <h2 style="font-size: 1.4rem; margin: 0.5rem 0;">LEVEL UP!</h2>
+            <p class="muted-text">You have reached</p>
+            <h3 id="modal-level-tier" style="color: var(--primary); margin: 0.25rem 0 1rem 0;">Level 2 — Explorer</h3>
+            <button type="button" id="close-level-up-btn" class="btn btn-primary" style="width: 100%;">🎉 Continue</button>
+        </div>
+    </div>
+
+    <!-- Floating Action Button Speed Dial -->
+    <div id="fab-container" class="fab-container">
+        <div id="fab-menu" class="fab-menu hidden">
+            <button type="button" class="fab-action-btn" data-action="add-task">
+                <span class="fab-action-label">Add Task</span>
+                <span>📝</span>
+            </button>
+            <button type="button" class="fab-action-btn" data-action="ask-ai">
+                <span class="fab-action-label">Ask AI</span>
+                <span>🤖</span>
+            </button>
+        </div>
+        <button id="fab-add-task" class="fab-btn" aria-label="Quick Actions" title="Quick Actions">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icon" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+    </div>
+
+    <!-- ============================================================
+         NEW AI & VOICE CAPABILITIES MODALS
+         ============================================================ -->
+
+    <!-- 1. Voice Dictation Listening Modal -->
+    <div id="voice-dictation-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="voice-modal-title">
+        <div class="modal-content" style="max-width: 460px; text-align: center; padding: 2rem 1.75rem;">
+            <button type="button" class="modal-close-btn" id="close-voice-modal-btn" aria-label="Close voice modal">&times;</button>
+            <div class="voice-mic-halo-wrap">
+                <div class="voice-pulse-ring"></div>
+                <div class="voice-pulse-ring-2"></div>
+                <div class="voice-mic-core" id="voice-mic-status-icon">🎤</div>
+            </div>
+            <h3 id="voice-modal-title" style="margin: 1rem 0 0.25rem 0; font-size: 1.25rem;">Listening to your voice...</h3>
+            <p style="color: var(--text-muted); font-size: 0.84rem; margin: 0 0 1.25rem 0;">Speak naturally (e.g. <em>"Submit physics report by tomorrow 5 PM with high priority"</em>)</p>
+            
+            <div class="voice-live-transcript-box" id="voice-live-transcript" style="background: var(--surface-sub); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; min-height: 70px; text-align: left; font-size: 0.95rem; color: var(--text); margin-bottom: 1.25rem; font-style: italic;">
+                "Waiting for speech input..."
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                <button type="button" id="voice-stop-btn" class="btn btn-primary" style="flex: 1;">
+                    <span>✨ Process Voice Task</span>
+                </button>
+                <button type="button" id="voice-cancel-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. AI Daily Morning Briefing & Standup Modal -->
+    <div id="ai-briefing-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="briefing-modal-title">
+        <div class="modal-content" style="max-width: 620px; max-height: 85vh; overflow-y: auto; padding: 1.75rem;">
+            <button type="button" class="modal-close-btn" id="close-briefing-modal-btn" aria-label="Close briefing modal">&times;</button>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.4rem;" id="briefing-header-emoji">🌅</span>
+                    <div>
+                        <h2 id="briefing-modal-title" style="margin: 0; font-size: 1.2rem; color: var(--text);">AI Daily Briefing</h2>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Powered by Gemini Intelligence</span>
+                    </div>
+                </div>
+                <div class="briefing-mode-toggle" style="display: flex; background: var(--surface-sub); border: 1px solid var(--border); border-radius: 20px; padding: 2px;">
+                    <button type="button" class="briefing-tab-btn active" data-mode="morning" style="padding: 4px 12px; border-radius: 16px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer;">🌅 Morning</button>
+                    <button type="button" class="briefing-tab-btn" data-mode="evening" style="padding: 4px 12px; border-radius: 16px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-muted);">🌙 Standup</button>
+                </div>
+            </div>
+
+            <div id="briefing-modal-content">
+                <div class="ai-loading-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem;">
+                    <div class="ai-loading-dots"><span></span><span></span><span></span></div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">Generating your personalized daily intelligence...</p>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <button type="button" id="btn-copy-standup" class="btn btn-secondary btn-sm" title="Copy briefing text to clipboard">
+                    <span>📋 Copy Briefing</span>
+                </button>
+                <button type="button" id="btn-refresh-briefing" class="btn btn-secondary btn-sm">
+                    <span>🔄 Regenerate</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Smart Workload & Burnout Audit Modal -->
+    <div id="workload-audit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="audit-modal-title">
+        <div class="modal-content" style="max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 1.75rem;">
+            <button type="button" class="modal-close-btn" id="close-audit-modal-btn" aria-label="Close workload audit modal">&times;</button>
+            
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+                <span style="font-size: 1.4rem;">⚡</span>
+                <div>
+                    <h2 id="audit-modal-title" style="margin: 0; font-size: 1.2rem; color: var(--text);">Smart Workload & Burnout Radar</h2>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Cognitive Load & Capacity Estimation</span>
+                </div>
+            </div>
+
+            <div id="audit-modal-content">
+                <div class="ai-loading-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem;">
+                    <div class="ai-loading-dots"><span></span><span></span><span></span></div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">Analyzing scheduled tasks, durations & cognitive load...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Data Export & Backup Hub Modal -->
+    <div id="export-data-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
+        <div class="modal-content" style="max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 2rem;">
+            <button type="button" class="modal-close-btn" id="close-export-modal-btn" aria-label="Close export modal">&times;</button>
+            
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
+                <span style="font-size: 1.5rem;">📄</span>
+                <div>
+                    <h2 id="export-modal-title" style="margin: 0; font-size: 1.25rem; color: var(--text);">Executive PDF Productivity Report</h2>
+                    <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted);">Download your complete official task records and performance metrics in PDF form</p>
+                </div>
+            </div>
+
+            <!-- PDF Export Card -->
+            <div style="background: var(--surface-sub); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-top: 1.25rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.35rem;">
+                            <span style="font-size: 1.5rem;">🖨️</span>
+                            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text); font-weight: 700;">Official Executive PDF Report</h3>
+                        </div>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                            Includes complete task breakdown (title, priority, status, due dates), execution velocity metrics, active routine habit tracking, deep work focus minutes, and unlocked gamification badges.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <a href="{{ url_for('export_report') }}?auto=1" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 0.75rem 1.25rem; font-weight: 700;">
+                        <span>📥 Download / Save PDF</span>
+                    </a>
+                    <a href="{{ url_for('export_report') }}" target="_blank" class="btn btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 0.75rem 1.25rem; font-weight: 600;">
+                        <span>👁️ Preview Report</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Restore / Import Data Section -->
+            <div class="import-section-box" style="border-top: 1px solid var(--border); padding-top: 1.25rem; margin-top: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 1.1rem;">📤</span>
+                    <h3 style="margin: 0; font-size: 0.98rem; color: var(--text);">Import & Restore Tasks</h3>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.85rem;">Upload a previously exported <strong>.json</strong> backup or <strong>.csv</strong> spreadsheet to import tasks into your account.</p>
+
+                <form id="import-tasks-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div class="file-upload-dropzone" id="file-dropzone" style="border: 2px dashed var(--border); border-radius: var(--radius-sm); padding: 1.25rem; text-align: center; cursor: pointer; transition: all 0.2s ease; background: var(--bg-card);">
+                        <input type="file" id="import-file-input" name="file" accept=".json,.csv" style="display: none;">
+                        <span style="font-size: 1.6rem; display: block; margin-bottom: 0.35rem;">📁</span>
+                        <span id="import-file-label" style="font-size: 0.85rem; font-weight: 600; color: var(--text);">Click to browse or drag & drop a .json or .csv file</span>
+                        <span style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Max file size: 5MB</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                        <button type="submit" id="btn-submit-import" class="btn btn-primary btn-sm" disabled style="display: inline-flex; align-items: center; gap: 6px;">
+                            <span>🚀 Import Tasks</span>
+                        </button>
+                    </div>
+                </form>
+                <div id="import-status-msg" style="display: none; margin-top: 0.75rem; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: 6px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link to JavaScript Controller -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const progressBarFill = document.getElementById('progress-bar-fill');
+            if (progressBarFill && progressBarFill.dataset.progress !== undefined) {
+                progressBarFill.style.width = `${progressBarFill.dataset.progress}%`;
+            }
+
+            const trigger = document.getElementById('user-profile-trigger');
+            const dropdown = document.getElementById('profileDropdown');
+            if (trigger && dropdown) {
+                trigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isVisible = dropdown.style.display === 'block';
+                    dropdown.style.display = isVisible ? 'none' : 'block';
+                });
+                document.addEventListener('click', () => {
+                    dropdown.style.display = 'none';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

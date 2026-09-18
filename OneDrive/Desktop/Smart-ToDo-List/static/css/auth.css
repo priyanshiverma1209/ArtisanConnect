@@ -1,0 +1,417 @@
+/* 
+ * Auth styles for AI Task Manager
+ */
+:root {
+    --primary: #3867f4;
+    --primary-hover: #2f5adb;
+    --primary-light: #edf3ff;
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --text-main: #182236;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --shadow-md: 0 10px 25px -5px rgba(56, 103, 244, 0.08), 0 8px 10px -6px rgba(56, 103, 244, 0.04);
+    --shadow-lg: 0 20px 40px -10px rgba(15, 23, 42, 0.1);
+    --radius: 14px;
+}
+
+body.auth-body {
+    background: radial-gradient(circle at 10% 20%, rgba(56, 103, 244, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(124, 92, 229, 0.08) 0%, transparent 40%),
+                #f8fafc;
+    font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 1.5rem;
+    box-sizing: border-box;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 460px;
+    animation: authFadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes authFadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.auth-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.25rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.auth-logo {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.auth-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.5rem 0;
+}
+
+.auth-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 480px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.form-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.forgot-password-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.forgot-password-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.resend-link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: inherit;
+}
+
+.resend-link-btn:hover {
+    color: var(--primary-hover);
+}
+
+.resend-link-btn:disabled {
+    color: var(--text-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+.form-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
+.otp-input {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+/* Development mode OTP banner */
+.dev-otp-banner {
+    background: #eff6ff;
+    border: 1.5px dashed #3b82f6;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.85rem;
+    color: #1e3a8a;
+}
+
+.dev-otp-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 0.88rem;
+}
+
+.dev-otp-msg {
+    margin: 6px 0;
+    font-size: 0.95rem;
+}
+
+.dev-otp-code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.25rem;
+    font-weight: 800;
+    background: #dbeafe;
+    padding: 2px 8px;
+    border-radius: 6px;
+    color: #1d4ed8;
+    letter-spacing: 2px;
+}
+
+.dev-otp-hint {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 6px;
+    line-height: 1.3;
+}
+
+.dev-otp-hint code {
+    background: #e2e8f0;
+    padding: 1px 4px;
+    border-radius: 4px;
+    color: #0f172a;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3.5px rgba(56, 103, 244, 0.16);
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.password-toggle-btn:hover {
+    color: var(--primary);
+    transform: scale(1.1);
+}
+
+.auth-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background-color: var(--bg-card);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.auth-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3.5px rgba(56, 103, 244, 0.16);
+}
+
+.auth-btn {
+    width: 100%;
+    padding: 0.85rem;
+    background: linear-gradient(135deg, #3867f4 0%, #2f5adb 100%);
+    color: white;
+    border: none;
+    border-radius: 9px;
+    font-size: 0.98rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(56, 103, 244, 0.25);
+}
+
+.auth-btn:hover:not(:disabled) {
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 18px rgba(56, 103, 244, 0.35);
+}
+
+.auth-btn:active:not(:disabled) {
+    transform: translateY(0.5px);
+}
+
+.auth-btn:disabled {
+    background: #93c5fd;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.auth-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
+
+/* Toast Messages */
+.toast-container {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    pointer-events: none;
+}
+
+.toast {
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transform: translateY(-20px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-success {
+    border-left: 4px solid #10b981;
+    color: #065f46;
+}
+
+.toast-error {
+    border-left: 4px solid #ef4444;
+    color: #991b1b;
+}
+
+.toast-icon {
+    font-size: 1.2rem;
+}
+
+/* Password Strength Meter */
+.password-strength-container {
+    margin-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.strength-track {
+    width: 100%;
+    height: 4px;
+    background-color: var(--border);
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 9999px;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease;
+}
+
+.strength-label-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account - AI Task Manager</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Custom StyleSheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body class="auth-body">
+    <div class="auth-container" style="max-width: 580px;">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">🚀</div>
+                <h1 class="auth-title">Create Account</h1>
+                <p class="auth-subtitle">Join us to organize your tasks, habits, and focus sessions with AI</p>
+            </div>
+            
+            <form action="{{ url_for('register') }}" method="POST" class="auth-form" autocomplete="on">
+                <!-- Full Name & Email (2 Column Row) -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="full-name" class="form-label">Full Name *</label>
+                        <input type="text" id="full-name" name="full_name" class="auth-input" placeholder="e.g. Akanchha Rai" autocomplete="name" value="{{ full_name or '' }}" required autofocus>
+                    </div>
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email Address *</label>
+                        <input type="email" id="email" name="email" class="auth-input" placeholder="name@example.com" autocomplete="email" value="{{ email or '' }}" required>
+                    </div>
+                </div>
+                
+                <!-- Phone & Role (2 Column Row) -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" class="auth-input" placeholder="+1 (555) 000-0000" autocomplete="tel" value="{{ phone or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="role" class="form-label">Role</label>
+                        <select id="role" name="role" class="auth-select">
+                            <option value="Student" {% if role == 'Student' %}selected{% endif %}>Student</option>
+                            <option value="Teacher" {% if role == 'Teacher' %}selected{% endif %}>Teacher</option>
+                            <option value="Professional" {% if role == 'Professional' or not role %}selected{% endif %}>Professional</option>
+                            <option value="Freelancer" {% if role == 'Freelancer' %}selected{% endif %}>Freelancer</option>
+                            <option value="Other" {% if role == 'Other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Password & Confirm Password (2 Column Row) -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password * (min 8 chars)</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" name="password" class="auth-input" placeholder="••••••••" autocomplete="new-password" minlength="8" required>
+                            <button type="button" class="password-toggle-btn" data-target="password" aria-label="Toggle password visibility">👁️</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-password" class="form-label">Confirm Password *</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="confirm-password" name="confirm_password" class="auth-input" placeholder="••••••••" autocomplete="new-password" minlength="8" required>
+                            <button type="button" class="password-toggle-btn" data-target="confirm-password" aria-label="Toggle password visibility">👁️</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="auth-btn" data-loading-text="Generating Unique ID & Creating Account...">
+                    Create Account & Get Unique ID
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                Already have an account? 
+                <a href="{{ url_for('login') }}" class="auth-link">Sign In with Unique ID</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash messages container for toast notifications -->
+    <div id="flash-messages" style="display: none;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <span class="flash-message-data" data-category="{{ category }}" data-message="{{ message }}"></span>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Scripting for alerts and validation -->
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+</html>

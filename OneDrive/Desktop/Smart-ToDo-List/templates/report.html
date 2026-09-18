@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Productivity Report — {{ current_user.full_name if current_user else 'Smart To-Do List' }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-light: #eef2ff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding: 2rem;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .report-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            padding: 2.5rem;
+        }
+
+        /* Action Toolbar */
+        .report-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border);
+        }
+
+        /* Header section */
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+        }
+
+        .brand-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .report-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .report-meta-box {
+            text-align: right;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .report-meta-box strong {
+            color: var(--text-main);
+            display: block;
+            font-size: 1rem;
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: var(--bg-page);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.1;
+            margin-bottom: 0.25rem;
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .kpi-card.highlight {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-color: #c7d2fe;
+        }
+        .kpi-card.highlight .kpi-value {
+            color: var(--primary);
+        }
+
+        /* Progress meter bar */
+        .progress-section {
+            background: var(--bg-page);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .progress-bar-track {
+            background: #e2e8f0;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            background: linear-gradient(90deg, var(--primary) 0%, #06b6d4 100%);
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        /* Section Headings */
+        .section-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 1.75rem 0 0.85rem 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 0.4rem;
+        }
+
+        /* Data Tables */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .report-table th {
+            text-align: left;
+            padding: 0.75rem 0.85rem;
+            background: var(--bg-page);
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .report-table td {
+            padding: 0.75rem 0.85rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .report-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+
+        .badge-high { background: #fee2e2; color: #b91c1c; }
+        .badge-medium { background: #fef3c7; color: #b45309; }
+        .badge-low { background: #dcfce7; color: #15803d; }
+        
+        .badge-completed { background: #dcfce7; color: #15803d; }
+        .badge-inprogress { background: #e0e7ff; color: #4338ca; }
+        .badge-todo { background: #f1f5f9; color: #475569; }
+
+        /* Gamification & Habits row */
+        .meta-summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .meta-summary-box {
+            background: var(--bg-page);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+
+        .meta-summary-box h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-main);
+        }
+
+        .meta-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .meta-list li {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 0.35rem;
+        }
+
+        .meta-list li:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        /* Footer */
+        .report-footer {
+            margin-top: 2.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Print Specific Styles */
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+            .report-wrapper {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            .report-actions {
+                display: none !important;
+            }
+            .kpi-card, .progress-section, .meta-summary-box {
+                break-inside: avoid;
+            }
+            .report-table {
+                break-inside: auto;
+            }
+            .report-table tr {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-wrapper">
+        <!-- Top Actions (Hidden on print) -->
+        <div class="report-actions">
+            <a href="/" class="btn btn-secondary">
+                ← Back to Dashboard
+            </a>
+            <div style="display: flex; gap: 0.75rem;">
+                <button onclick="window.print()" class="btn btn-primary" style="background-color: #4f46e5; color: #ffffff; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);">
+                    📄 Download / Print PDF Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="report-header">
+            <div>
+                <h1 class="brand-title">🚀 Smart To-Do List</h1>
+                <p class="report-subtitle">Executive Productivity & Task Intelligence Report</p>
+            </div>
+            <div class="report-meta-box">
+                <strong>{{ current_user.full_name if current_user else 'User' }}</strong>
+                <span>{{ current_user.email if current_user else '' }}</span>
+                <div>Generated: {{ generated_date }}</div>
+            </div>
+        </div>
+
+        <!-- Executive KPI Metrics -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-value">{{ stats.total }}</div>
+                <div class="kpi-label">Total Tasks</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" style="color: var(--success);">{{ stats.completed }}</div>
+                <div class="kpi-label">Completed</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" style="color: var(--warning);">{{ stats.in_progress }}</div>
+                <div class="kpi-label">In Progress</div>
+            </div>
+            <div class="kpi-card highlight">
+                <div class="kpi-value">{{ productivity }}%</div>
+                <div class="kpi-label">Completion Velocity</div>
+            </div>
+        </div>
+
+        <!-- Progress Meter -->
+        <div class="progress-section">
+            <div class="progress-header">
+                <span>Task Execution Progress</span>
+                <span>{{ stats.completed }} of {{ stats.total }} Completed ({{ productivity }}%)</span>
+            </div>
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" style="width: {{ productivity }}%;"></div>
+            </div>
+        </div>
+
+        <!-- Task Breakdown Table -->
+        <h2 class="section-title">📋 Task Pipeline Breakdown</h2>
+        {% if tasks %}
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th style="width: 35%;">Task Title</th>
+                    <th>Category</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Due Date</th>
+                    <th>Est. Time</th>
+                    <th>Progress</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tasks %}
+                <tr>
+                    <td>
+                        <strong style="color: var(--text-main);">{{ t.title }}</strong>
+                        {% if t.description %}
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">{{ t.description }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ (t.category or 'Other') | capitalize }}</td>
+                    <td>
+                        <span class="badge badge-{{ t.priority or 'medium' }}">{{ t.priority or 'medium' }}</span>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ t.status or 'todo' }}">{{ (t.status or 'to_do') | replace('_', ' ') }}</span>
+                    </td>
+                    <td>{{ t.due_date if t.due_date else '—' }}</td>
+                    <td>{{ t.estimated_time }}m</td>
+                    <td>
+                        <strong>{{ t.progress or 0 }}%</strong>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: var(--text-muted); padding: 1rem 0;">No tasks found in the database.</p>
+        {% endif %}
+
+        <!-- Secondary Summary Grid (Gamification & Deep Work) -->
+        <div class="meta-summary-grid">
+            <!-- Gamification & XP Progress -->
+            <div class="meta-summary-box">
+                <h4>⭐ Productivity Level & Gamification</h4>
+                <ul class="meta-list">
+                    <li>
+                        <span style="color: var(--text-muted);">Current Tier:</span>
+                        <strong>Level {{ gamification.level_info.level }} — {{ gamification.level_info.title }}</strong>
+                    </li>
+                    <li>
+                        <span style="color: var(--text-muted);">Total XP Earned:</span>
+                        <strong>{{ gamification.level_info.total_xp }} XP</strong>
+                    </li>
+                    <li>
+                        <span style="color: var(--text-muted);">Current Streak:</span>
+                        <strong>🔥 {{ (gamification.streak.current_streak if gamification.streak else (gamification.streak_info.current_streak if gamification.streak_info else 0)) or 0 }} Days</strong>
+                    </li>
+                    <li>
+                        <span style="color: var(--text-muted);">Longest Streak:</span>
+                        <strong>{{ (gamification.streak.longest_streak if gamification.streak else (gamification.streak_info.longest_streak if gamification.streak_info else 0)) or 0 }} Days</strong>
+                    </li>
+                    <li>
+                        <span style="color: var(--text-muted);">Daily Task Goal:</span>
+                        <strong>{{ gamification.daily_goal.completed_today }} / {{ gamification.daily_goal.goal }} Tasks</strong>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Deep Work & Focus Studio Stats -->
+            <div class="meta-summary-box">
+                <h4>⚡ Focus & Routine Habits</h4>
+                <ul class="meta-list">
+                    <li>
+                        <span style="color: var(--text-muted);">Active Routine Habits:</span>
+                        <strong>{{ habits | length }} Habits Tracked</strong>
+                    </li>
+                    <li>
+                        <span style="color: var(--text-muted);">Completed Focus Sessions:</span>
+                        <strong>{{ focus_sessions | length }} Sessions</strong>
+                    </li>
+                    <li>
+                        <span style="color: var(--text-muted);">Total Deep Work Focus:</span>
+                        <strong>{{ total_focus_minutes }} Minutes</strong>
+                    </li>
+                    <li>
+                        <span style="color: var(--text-muted);">Unlocked Badges:</span>
+                        <strong>{{ unlocked_badges_count }} Badges</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="report-footer">
+            <span>Generated securely by Smart To-Do List System</span>
+            <span>Confidential — For User Reference Only</span>
+        </div>
+    </div>
+
+    <script>
+        // If loaded with ?auto=1 or ?download=pdf, trigger print dialog automatically
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('auto') === '1' || params.get('download') === 'pdf' || params.get('print') === '1') {
+                setTimeout(() => {
+                    window.print();
+                }, 400);
+            }
+        });
+    </script>
+</body>
+</html>

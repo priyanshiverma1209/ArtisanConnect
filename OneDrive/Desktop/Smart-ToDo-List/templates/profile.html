@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - AI Task Manager</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Link to Custom Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <style>
+        .profile-layout {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .profile-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .profile-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        [data-theme="dark"] .profile-card {
+            background: #172033;
+            border-color: #26344d;
+        }
+        .profile-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 1.25rem;
+        }
+        [data-theme="dark"] .profile-header-meta {
+            border-bottom-color: #26344d;
+        }
+        .profile-large-avatar {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: #e0e7ff;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+        .profile-title-group h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        [data-theme="dark"] .profile-title-group h2 {
+            color: #f1f5f9;
+        }
+        .profile-title-group p {
+            margin: 0.2rem 0 0 0;
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+        .id-badge-container {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.25rem;
+        }
+        [data-theme="dark"] .id-badge-container {
+            background: #064e3b;
+            border-color: #047857;
+        }
+        .id-badge-text {
+            font-size: 0.8rem;
+            color: #166534;
+            font-weight: 600;
+        }
+        [data-theme="dark"] .id-badge-text {
+            color: #a7f3d0;
+        }
+        .id-badge-val {
+            font-family: 'Outfit', monospace;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #15803d;
+            margin-left: 0.25rem;
+        }
+        [data-theme="dark"] .id-badge-val {
+            color: #6ee7b7;
+        }
+        .copy-id-btn {
+            background: #ffffff;
+            border: 1px solid #86efac;
+            color: #166534;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.15s ease;
+        }
+        .copy-id-btn:hover {
+            background: #dcfce7;
+        }
+    </style>
+</head>
+<body style="background-color: #f8fafc; padding: 1rem; min-height: 100vh;">
+    <div style="max-width: 900px; margin: 1rem auto; display: flex; justify-content: space-between; align-items: center; padding: 0 1rem;">
+        <a href="/" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+            ← Back to Dashboard
+        </a>
+        <h1 style="font-size: 1.4rem; font-weight: 800; margin: 0; color: #1e293b;">User Profile & Settings</h1>
+    </div>
+
+    <div class="profile-layout">
+        <!-- Edit Profile Details Card -->
+        <div class="profile-card">
+            <div class="profile-header-meta">
+                <div class="profile-large-avatar">
+                    {{ (current_user.full_name or 'User')[0] | upper }}
+                </div>
+                <div class="profile-title-group">
+                    <h2>Personal Details</h2>
+                    <p>Member since: {{ (current_user.created_at or '')[:10] }}</p>
+                </div>
+            </div>
+
+            <!-- Unique Login ID Badge -->
+            <div class="id-badge-container">
+                <div class="id-badge-text">
+                    Unique User ID: <span class="id-badge-val" id="profile-uid-text">{{ current_user.unique_id }}</span>
+                </div>
+                <button type="button" class="copy-id-btn" id="copy-profile-uid-btn">
+                    <span>📋</span> Copy
+                </button>
+            </div>
+            
+            <form action="{{ url_for('profile_update') }}" method="POST" class="auth-form" autocomplete="off">
+                <!-- Full Name -->
+                <div class="form-group">
+                    <label for="full_name" class="form-label">Full Name *</label>
+                    <input type="text" id="full_name" name="full_name" class="auth-input" value="{{ current_user.full_name }}" required>
+                </div>
+                
+                <!-- Email Address -->
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address *</label>
+                    <input type="email" id="email" name="email" class="auth-input" value="{{ current_user.email }}" required>
+                </div>
+                
+                <!-- Phone & Role -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" class="auth-input" value="{{ current_user.phone or '' }}" placeholder="+1 (555) 000-0000">
+                    </div>
+                    <div class="form-group">
+                        <label for="role" class="form-label">Role</label>
+                        <select id="role" name="role" class="auth-select">
+                            <option value="Student" {% if current_user.role == 'Student' %}selected{% endif %}>Student</option>
+                            <option value="Teacher" {% if current_user.role == 'Teacher' %}selected{% endif %}>Teacher</option>
+                            <option value="Professional" {% if current_user.role == 'Professional' %}selected{% endif %}>Professional</option>
+                            <option value="Freelancer" {% if current_user.role == 'Freelancer' %}selected{% endif %}>Freelancer</option>
+                            <option value="Other" {% if current_user.role == 'Other' or not current_user.role %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="auth-btn" data-loading-text="Saving Changes...">
+                    Save Profile Details
+                </button>
+            </form>
+        </div>
+
+        <!-- Change Password Card -->
+        <div class="profile-card">
+            <div class="profile-header-meta">
+                <div class="profile-large-avatar" style="background: #fef3c7; color: #d97706;">🔒</div>
+                <div class="profile-title-group">
+                    <h2>Change Password</h2>
+                    <p>Keep your account protected</p>
+                </div>
+            </div>
+            
+            <form action="{{ url_for('profile_change_password') }}" method="POST" class="auth-form" autocomplete="off">
+                <!-- Current Password -->
+                <div class="form-group">
+                    <label for="current-password" class="form-label">Current Password *</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="current-password" name="current_password" class="auth-input" placeholder="••••••••" required>
+                        <button type="button" class="password-toggle-btn" data-target="current-password" aria-label="Toggle password visibility">👁️</button>
+                    </div>
+                </div>
+                
+                <!-- New Password -->
+                <div class="form-group">
+                    <label for="password" class="form-label">New Password * (min 8 chars)</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" class="auth-input" placeholder="••••••••" minlength="8" required>
+                        <button type="button" class="password-toggle-btn" data-target="password" aria-label="Toggle password visibility">👁️</button>
+                    </div>
+                </div>
+                
+                <!-- Confirm New Password -->
+                <div class="form-group">
+                    <label for="confirm-password" class="form-label">Confirm New Password *</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="confirm-password" name="confirm_password" class="auth-input" placeholder="••••••••" minlength="8" required>
+                        <button type="button" class="password-toggle-btn" data-target="confirm-password" aria-label="Toggle password visibility">👁️</button>
+                    </div>
+                </div>
+                
+                <button type="submit" class="auth-btn" data-loading-text="Changing Password..." style="background-color: #3b82f6;">
+                    Update Password
+                </button>
+            </form>
+        </div>
+        
+        <!-- PDF Report Export Card -->
+        <div class="profile-card" style="grid-column: 1 / -1;">
+            <div class="profile-header-meta">
+                <div class="profile-large-avatar" style="background: #eef2ff; color: #4f46e5;">📄</div>
+                <div class="profile-title-group">
+                    <h2>Executive PDF Report & Export</h2>
+                    <p>Download your complete official productivity analytics, task status breakdowns, and achievements in PDF format</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                <a href="{{ url_for('export_report') }}?auto=1" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.85rem 1.5rem; text-decoration: none; font-weight: 700; border-radius: 8px; background-color: #4f46e5; color: #ffffff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);">
+                    <span>📥 Download PDF Report</span>
+                </a>
+                <a href="{{ url_for('export_report') }}" target="_blank" class="btn btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.85rem 1.25rem; text-decoration: none; font-weight: 600; border-radius: 8px;">
+                    <span>👁️ Preview Report in Browser</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash messages container for toast notifications -->
+    <div id="flash-messages" style="display: none;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <span class="flash-message-data" data-category="{{ category }}" data-message="{{ message }}"></span>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Scripting for alerts and validation -->
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script>
+        document.getElementById('copy-profile-uid-btn')?.addEventListener('click', function() {
+            const uid = document.getElementById('profile-uid-text').textContent.trim();
+            navigator.clipboard.writeText(uid).then(() => {
+                this.innerHTML = '<span>✅</span> Copied!';
+                setTimeout(() => {
+                    this.innerHTML = '<span>📋</span> Copy';
+                }, 2000);
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = uid;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                this.innerHTML = '<span>✅</span> Copied!';
+            });
+        });
+    </script>
+</body>
+</html>

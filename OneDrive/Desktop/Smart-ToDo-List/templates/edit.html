@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Task - Smart To-Do List</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Link to Custom Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container" style="max-width: 600px; margin: 2rem auto;">
+        
+        <!-- Header -->
+        <header class="app-header" style="padding: 1.25rem 2rem;">
+            <div class="header-left">
+                <div class="app-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-icon">
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                </div>
+                <div class="header-titles">
+                    <h1>Edit Task</h1>
+                    <p class="welcome-subtitle">Update task details and progress indicators</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="theme-toggle" class="theme-btn" aria-label="Toggle Theme">
+                    <span class="theme-btn-icon light-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="4"/>
+                            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                        </svg>
+                    </span>
+                    <span class="theme-btn-icon dark-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                        </svg>
+                    </span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Edit Form Card -->
+        <main class="app-main" style="display: block;">
+            <div class="card form-card glass-card">
+                <div class="card-header" style="margin-bottom: 1.5rem;">
+                    <h2>Modify Task Details</h2>
+                    <p class="card-subtitle">Task ID: #{{ task.id }} &bull; Created on: {{ task.created_at }}</p>
+                </div>
+                
+                <form id="edit-task-form" action="{{ url_for('edit', task_id=task.id) }}" method="POST" class="task-form" autocomplete="off">
+                    <!-- Task Title -->
+                    <div class="form-group">
+                        <label for="task-title">Task Title <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <input type="text" id="task-title" name="title" value="{{ task.title }}" placeholder="Task Title" required autofocus>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <div class="label-with-counter">
+                            <label for="task-desc">Description</label>
+                            <span id="char-counter" class="char-counter">{{ task.description|length }} / 200</span>
+                        </div>
+                        <div class="input-wrapper">
+                            <textarea id="task-desc" name="description" placeholder="Description details..." rows="3" maxlength="200">{{ task.description }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Est. Time & Due Date -->
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="task-est-time">Est. Time (Mins)</label>
+                            <input type="number" id="task-est-time" name="estimated_time" min="0" value="{{ task.estimated_time or 0 }}" placeholder="Mins">
+                        </div>
+                        <div class="form-group col">
+                            <label for="task-due-date">Due Date</label>
+                            <input type="date" id="task-due-date" name="due_date" value="{{ task.due_date }}">
+                        </div>
+                    </div>
+
+                    <!-- Form Row (Priority & Category) -->
+                    <div class="form-row">
+                        <!-- Priority -->
+                        <div class="form-group col">
+                            <label for="task-priority">Priority</label>
+                            <div class="select-wrapper">
+                                <select id="task-priority" name="priority">
+                                    <option value="low" {% if task.priority == 'low' %}selected{% endif %}>Low</option>
+                                    <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>Medium</option>
+                                    <option value="high" {% if task.priority == 'high' %}selected{% endif %}>High</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Category -->
+                        <div class="form-group col">
+                            <label for="task-category">Category</label>
+                            <div class="select-wrapper">
+                                <select id="task-category" name="category">
+                                    <option value="work" {% if task.category == 'work' %}selected{% endif %}>Work</option>
+                                    <option value="personal" {% if task.category == 'personal' %}selected{% endif %}>Personal</option>
+                                    <option value="study" {% if task.category == 'study' %}selected{% endif %}>Study</option>
+                                    <option value="other" {% if task.category == 'other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status & Progress Slider -->
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="task-status">Status</label>
+                            <div class="select-wrapper">
+                                <select id="task-status" name="status">
+                                    <option value="to_do" {% if task.status == 'to_do' %}selected{% endif %}>To Do</option>
+                                    <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group col">
+                            <label for="task-progress">Progress (<span id="progress-text-display">{{ task.progress or 0 }}</span>%)</label>
+                            <input type="range" id="task-progress" name="progress" min="0" max="100" value="{{ task.progress or 0 }}" style="width: 100%;">
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="form-actions" style="margin-top: 1rem;">
+                        <button type="submit" id="save-task-btn" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Save Changes
+                        </button>
+                        <a href="{{ url_for('home') }}" class="btn btn-secondary" style="text-decoration: none;">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2026 Smart To-Do List Project. Developed for BCA Final-Year Mini Project.</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript for Dark Mode support and char counts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            
+            const initTheme = () => {
+                const savedTheme = localStorage.getItem('theme');
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                }
+            };
+
+            const toggleTheme = () => {
+                const isDarkMode = document.body.classList.toggle('dark-mode');
+                localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            };
+
+            if (themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', toggleTheme);
+            }
+            initTheme();
+
+            const descArea = document.getElementById('task-desc');
+            const counter = document.getElementById('char-counter');
+            if (descArea && counter) {
+                descArea.addEventListener('input', () => {
+                    counter.textContent = `${descArea.value.length} / 200`;
+                });
+            }
+
+            // Sync slider and status values
+            const progressSlider = document.getElementById('task-progress');
+            const progressText = document.getElementById('progress-text-display');
+            const statusSelect = document.getElementById('task-status');
+            
+            if (progressSlider && progressText && statusSelect) {
+                progressSlider.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    progressText.textContent = val;
+                    if (val >= 100) statusSelect.value = 'completed';
+                    else if (val <= 0) statusSelect.value = 'to_do';
+                    else statusSelect.value = 'in_progress';
+                });
+                
+                statusSelect.addEventListener('change', (e) => {
+                    const statusVal = e.target.value;
+                    if (statusVal === 'completed') {
+                        progressSlider.value = 100;
+                        progressText.textContent = 100;
+                    } else if (statusVal === 'to_do') {
+                        if (progressSlider.value == 100) {
+                            progressSlider.value = 0;
+                            progressText.textContent = 0;
+                        }
+                    } else {
+                        if (progressSlider.value == 0 || progressSlider.value == 100) {
+                            progressSlider.value = 5;
+                            progressText.textContent = 5;
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
