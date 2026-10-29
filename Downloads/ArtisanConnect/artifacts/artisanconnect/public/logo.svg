@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" role="img" aria-label="ArtisanConnect">
+  <rect width="32" height="32" x="2" y="4" rx="9" fill="#c9472c"/>
+  <path d="M11 20c4-1 4-5 5-8 1 3 2 6 6 7-4 1-5 3-6 7-1-4-2-5-5-6Z" fill="#fffaf2"/>
+  <text x="44" y="27" font-family="Georgia,serif" font-size="20" font-weight="700" fill="#2e241d">artisan<tspan fill="#c9472c">connect</tspan></text>
+</svg>

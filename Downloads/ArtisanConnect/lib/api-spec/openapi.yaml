@@ -1,0 +1,609 @@
+
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: marketplace
+    description: ArtisanConnect marketplace operations
+  - name: storage
+    description: Upload preparation operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [marketplace]
+      summary: List marketplace categories
+      responses:
+        "200":
+          description: Marketplace categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+  /artisans:
+    get:
+      operationId: listArtisans
+      tags: [marketplace]
+      summary: Browse artisans
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: category
+          in: query
+          required: false
+          schema: { type: string }
+        - name: region
+          in: query
+          required: false
+          schema: { type: string }
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [featured, rating, newest]
+      responses:
+        "200":
+          description: Matching artisans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ArtisanSummary"
+  /artisans/{id}:
+    get:
+      operationId: getArtisan
+      tags: [marketplace]
+      summary: Get an artisan storefront
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Artisan profile and portfolio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtisanProfile"
+        "404":
+          description: Artisan not found
+  /requests:
+    get:
+      operationId: listRequests
+      tags: [marketplace]
+      summary: List customer requests
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, in_progress, completed]
+      responses:
+        "200":
+          description: Customer requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Request"
+    post:
+      operationId: createRequest
+      tags: [marketplace]
+      summary: Create a customer request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestInput"
+      responses:
+        "201":
+          description: Created request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Request"
+  /requests/{requestId}/connect:
+    post:
+      operationId: connectToRequest
+      tags: [marketplace]
+      summary: Send an artisan connection to a customer request
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectInput"
+      responses:
+        "201":
+          description: Connection sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestConnection"
+        "404":
+          description: Request not found
+        "409":
+          description: Request is no longer open
+  /requests/{requestId}/responses:
+    get:
+      operationId: listRequestResponses
+      tags: [marketplace]
+      summary: List artisan responses to one of the signed-in customer's requests
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Artisan responses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RequestResponseDetail"
+        "403":
+          description: Not your request
+        "404":
+          description: Request not found
+  /responses/mine:
+    get:
+      operationId: listMyResponses
+      tags: [marketplace]
+      summary: List the signed-in artisan's responses to customer requests
+      responses:
+        "200":
+          description: The artisan's responses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyResponse"
+  /connections:
+    get:
+      operationId: listConnections
+      tags: [marketplace]
+      summary: List the signed-in user's connections (artisan responses to customer requests)
+      responses:
+        "200":
+          description: Connections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Connection"
+  /connections/{connectionId}/accept:
+    post:
+      operationId: acceptConnection
+      tags: [marketplace]
+      summary: Customer accepts one artisan's response
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        "403":
+          description: Not allowed
+        "404":
+          description: Connection not found
+        "409":
+          description: Request already has an artisan
+  /connections/{connectionId}/complete:
+    post:
+      operationId: completeConnection
+      tags: [marketplace]
+      summary: Customer marks the job completed
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        "403":
+          description: Not allowed
+        "404":
+          description: Connection not found
+        "409":
+          description: Job is not in progress
+  /connections/{connectionId}/messages:
+    get:
+      operationId: listConnectionMessages
+      tags: [marketplace]
+      summary: List chat messages for an accepted connection
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        "403":
+          description: Not your conversation
+        "404":
+          description: Connection not found
+        "409":
+          description: Chat not open yet
+    post:
+      operationId: sendConnectionMessage
+      tags: [marketplace]
+      summary: Send a chat message on an accepted connection
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "403":
+          description: Not your conversation
+        "404":
+          description: Connection not found
+        "409":
+          description: Chat not open yet                
+  
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [marketplace]
+      summary: Get customer and artisan dashboard data
+      responses:
+        "200":
+          description: Dashboard snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [marketplace]
+      summary: Get the current artisan profile
+      responses:
+        "200":
+          description: Current artisan profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtisanProfile"
+    patch:
+      operationId: updateProfile
+      tags: [marketplace]
+      summary: Update the current artisan profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtisanProfile"
+  /portfolio:
+    post:
+      operationId: createPortfolioItem
+      tags: [marketplace]
+      summary: Add a work sample to a portfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioItemInput"
+      responses:
+        "201":
+          description: Created portfolio item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioItem"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a direct upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          description: Upload target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status: { type: string }
+      required: [status]
+    Category:
+      type: object
+      required: [id, name, count, icon]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        count: { type: integer }
+        icon: { type: string }
+    ArtisanSummary:
+      type: object
+      required: [id, name, craft, region, rating, reviewCount, startingPrice, imageUrl, tags, verified, featured]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        craft: { type: string }
+        region: { type: string }
+        rating: { type: number }
+        reviewCount: { type: integer }
+        startingPrice: { type: number }
+        imageUrl: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        verified: { type: boolean }
+        featured: { type: boolean }
+    PortfolioItem:
+      type: object
+      required: [id, title, description, mediaUrl, mediaType, createdAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        mediaUrl: { type: string }
+        mediaType:
+          type: string
+          enum: [image, video]
+        createdAt: { type: string, format: date-time }
+    ArtisanProfile:
+      allOf:
+        - $ref: "#/components/schemas/ArtisanSummary"
+        - type: object
+          required: [bio, experience, completedProjects, responseTime, portfolio]
+          properties:
+            bio: { type: string }
+            experience: { type: string }
+            completedProjects: { type: integer }
+            responseTime: { type: string }
+            portfolio:
+              type: array
+              items:
+                $ref: "#/components/schemas/PortfolioItem"
+    Request:
+      type: object
+      required: [id, title, description, category, budget, deadline, location, status, postedAt, proposals]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        category: { type: string }
+        budget: { type: number }
+        deadline: { type: string }
+        location: { type: string }
+        status:
+          type: string
+          enum: [open, in_progress, completed]
+        postedAt: { type: string }
+        proposals: { type: integer }
+    RequestInput:
+      type: object
+      required: [title, description, category, budget, deadline, location]
+      properties:
+        title: { type: string, minLength: 3 }
+        description: { type: string, minLength: 10 }
+        category: { type: string }
+        budget: { type: number, minimum: 0 }
+        deadline: { type: string }
+        location: { type: string }
+    RequestConnection:
+      type: object
+      required: [id, requestId, status, message]
+      properties:
+        id: { type: string }
+        requestId: { type: string }
+        status:
+          type: string
+          enum: [sent]
+        message: { type: string }
+    ConnectInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 5 }
+        quote: { type: integer, minimum: 0 }
+    RequestResponseDetail:
+      type: object
+      required: [id, requestId, message, quote, createdAt, artisan]
+      properties:
+        id: { type: string }
+        requestId: { type: string }
+        message: { type: string }
+        quote: { type: integer }
+        createdAt: { type: string, format: date-time }
+        artisan:
+          $ref: "#/components/schemas/ArtisanSummary"
+    MyResponse:
+      type: object
+      required: [id, requestId, message, quote, createdAt, request]
+      properties:
+        id: { type: string }
+        requestId: { type: string }
+        message: { type: string }
+        quote: { type: integer }
+        createdAt: { type: string, format: date-time }
+        request:
+          $ref: "#/components/schemas/Request"
+    
+    Connection:
+      type: object
+      required: [id, requestId, status, message, quote, createdAt, artisan, request]
+      properties:
+        id: { type: string }
+        requestId: { type: string }
+        status: { type: string, description: "sent, accepted or declined" }
+        message: { type: string }
+        quote: { type: integer }
+        createdAt: { type: string, format: date-time }
+        artisan:
+          $ref: "#/components/schemas/ArtisanSummary"
+        request:
+          $ref: "#/components/schemas/Request"
+    MessageInput:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 2000 }
+        kind: { type: string, enum: [text, contact] }
+    Message:
+      type: object
+      required: [id, senderRole, kind, body, createdAt]
+      properties:
+        id: { type: string }
+        senderRole: { type: string, description: "customer or artisan" }
+        kind: { type: string, description: "text or contact" }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    Dashboard:
+      type: object
+      required: [role, stats, recentRequests, recentActivity]
+      properties:
+        role:
+          type: string
+          enum: [customer, artisan]
+        stats:
+          type: object
+          required: [active, completed, saved, earnings]
+          properties:
+            active: { type: integer }
+            completed: { type: integer }
+            saved: { type: integer }
+            earnings: { type: number }
+        recentRequests:
+          type: array
+          items: { $ref: "#/components/schemas/Request" }
+        recentActivity:
+          type: array
+          items:
+            type: object
+            required: [id, label, timestamp, type]
+            properties:
+              id: { type: string }
+              label: { type: string }
+              timestamp: { type: string }
+              type: { type: string }
+    ProfileUpdate:
+      type: object
+      required: [name, craft, region, bio, startingPrice]
+      properties:
+        name: { type: string }
+        craft: { type: string }
+        region: { type: string }
+        bio: { type: string }
+        startingPrice: { type: number, minimum: 0 }
+    PortfolioItemInput:
+      type: object
+      required: [title, description, mediaUrl, mediaType]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        mediaUrl: { type: string }
+        mediaType:
+          type: string
+          enum: [image, video]
+    UploadRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string }
+        size: { type: integer, minimum: 1 }
+        contentType: { type: string }
+    UploadResponse:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl: { type: string }
+        objectPath: { type: string }
